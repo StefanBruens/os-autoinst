@@ -69,36 +69,21 @@ struct Image {
 
 /* the purpose of this function is to calculate the error between two images
   (scene area and object) ignoring slight colour changes */
-double enhancedMSE(const Mat& _I1, const Mat& _I2)
+double enhancedMSE(const Mat& I1, const Mat& I2)
 {
-    Mat I1 = _I1;
-    I1.convertTo(I1, CV_8UC1);
-    Mat I2 = _I2;
-    I2.convertTo(I2, CV_8UC1);
-
+    assert(I1.channels() == I2.channels());
     assert(I1.channels() == 1);
-    assert(I2.channels() == 1);
+    assert(I1.type() == I2.type());
+    assert(I1.type() == CV_8UC1);
 
-    double sse = 0;
+    Mat t;
+    absdiff(I1, I2, t);
 
-    for (int j = 0; j < I1.rows; j++) {
-        // get the address of row j
-        const uchar* I1_data = I1.ptr<const uchar>(j);
-        const uchar* I2_data = I2.ptr<const uchar>(j);
+    threshold(t, t, 16, 0, THRESH_TOZERO);
+    t /= 8;
 
-        for (int i = 0; i < I1.cols; i++) {
-            // reduce the colours to 16 before checking the diff
-            if (abs(I1_data[i] - I2_data[i]) < 16)
-                continue; // += 0
-            double t1 = round(I1_data[i] / 16.);
-            double t2 = round(I2_data[i] / 16.);
-            double diff = (t1 - t2) * 16;
-            sse += diff * diff;
-        }
-    }
-
-    double total = I1.total();
-    double mse = sse / total;
+    double n = 8 * norm(t);
+    double mse = n * n / I1.total();
 
 #if DEBUG2
     char f[200];
