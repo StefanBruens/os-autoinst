@@ -789,12 +789,12 @@ sub _failed_screens_to_json {
     my $failed_screens = $self->assert_screen_fails;
     my $final_mismatch = $failed_screens->[-1];
     if ($final_mismatch) {
-        _reduce_to_biggest_changes($failed_screens, 20);
+        _reduce_to_biggest_changes($failed_screens, 30);
         # only append the last mismatch if it's different to the last one in the reduced list
         my $new_final = $failed_screens->[-1];
         if ($new_final != $final_mismatch) {
             my $sim = $new_final->[0]->similarity($final_mismatch->[0]);
-            push(@$failed_screens, $final_mismatch) if ($sim < 50);
+            push(@$failed_screens, $final_mismatch) if ($sim < 55);
         }
     }
 
@@ -909,7 +909,7 @@ sub check_asserted_screen {
         }
         # clean up every once in a while to avoid excessive memory consumption.
         # The value here is an arbitrary limit.
-        if (@$failed_screens > 60) {
+        if (@$failed_screens > 30) {
             _reduce_to_biggest_changes($failed_screens, 20);
         }
     }
@@ -923,17 +923,24 @@ sub _reduce_to_biggest_changes {
 
     return if @$imglist <= $limit;
 
+    my $watch = OpenQA::Benchmark::Stopwatch->new();
+    $watch->start();
+
     my $first = shift @$imglist;
     @$imglist = (sort { $b->[3] <=> $a->[3] } @$imglist)[0 .. (@$imglist > $limit ? $limit - 1 : $#$imglist)];
     unshift @$imglist, $first;
+    $watch->lap("reduced");
 
     # now sort for test time
     @$imglist = sort { $b->[2] <=> $a->[2] } @$imglist;
+    $watch->lap("sorted");
 
     # recalculate similarity
     for (my $i = 1; $i < @$imglist; ++$i) {
         $imglist->[$i]->[3] = $imglist->[$i - 1]->[0]->similarity($imglist->[$i]->[0]);
     }
+    $watch->stop();
+    bmwqemu::diag "DEBUG_IO: \n" . $watch->summary();
 
     return;
 }
