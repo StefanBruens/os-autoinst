@@ -117,6 +117,8 @@ sub run {
     $self->last_update_request("-Inf" + 0);
     $self->last_screenshot(undef);
     $self->screenshot_interval($bmwqemu::vars{SCREENSHOTINTERVAL} || .5);
+    $self->{image_forcecheck_time} = 5 / $self->screenshot_interval;
+
     # query the VNC backend more often than we write out screenshots, so the chances
     # are high we're not writing out outdated screens
     $self->update_request_interval($self->screenshot_interval / 2);
@@ -454,6 +456,10 @@ sub enqueue_screenshot {
     # into the video
     if ($self->{min_image_similarity} <= 54) {
         $self->last_image($image);
+        # Time (in frames) until fullscreen check is forced
+        my $check_interval = 5 / $self->screenshot_interval;
+        $self->{image_forcecheck_time} = 0 if ($self->{image_forcecheck_time} < 0);
+        $self->{image_forcecheck_time} = int(0.5 * ($check_interval + $self->{image_forcecheck_time})));
         $self->{min_image_similarity} = 10000;
     }
 
@@ -984,7 +990,8 @@ sub check_asserted_screen {
     my $frame     = $self->{video_frame_number};
 
     my $search_ratio = 0.02;
-    $search_ratio = 1 if ($n % 5 == 0);
+    $search_ratio = 1 if ($self->{image_forcecheck_time} == 0);
+    $self->{image_forcecheck_time} -= 1;
 
     my ($oldimg, $old_search_ratio) = @{$self->assert_screen_last_check || [undef, 0]};
 
