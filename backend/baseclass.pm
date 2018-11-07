@@ -992,9 +992,16 @@ sub check_asserted_screen {
         # one last big search
         $search_ratio = 1;
     }
-    else {
-        if ($oldimg && $oldimg eq $img && $old_search_ratio >= $search_ratio) {
-            bmwqemu::diag('no change: ' . time_remaining_str($n));
+
+    if ($oldimg && $oldimg eq $img) {
+        bmwqemu::diag('no change: ' . time_remaining_str($n));
+        if ($n < 0) {
+            bmwqemu::diag('Final fullscreen search')
+        }
+        elsif ($old_search_ratio >= $search_ratio) {
+            bmwqemu::diag('Forced fullscreen search')
+        }
+        else {
             return;
         }
     }
